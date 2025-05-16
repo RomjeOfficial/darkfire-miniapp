@@ -10,64 +10,184 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       text-align: center;
       padding: 40px;
+      user-select: none;
+      overflow: hidden;
+      position: relative;
+      height: 100vh;
     }
-    #fire {
+    #fire-container {
+      position: relative;
+      display: inline-block;
       font-size: 100px;
       margin: 40px 0;
-      user-select: none;
+      cursor: pointer;
+    }
+    #fire {
       animation: flicker 1.5s infinite alternate;
     }
     @keyframes flicker {
       0% { opacity: 1; }
       100% { opacity: 0.7; }
     }
-    button {
-      padding: 15px 30px;
-      font-size: 22px;
-      background-color: #bb3300;
-      border: none;
-      border-radius: 12px;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
+    /* Прогресс удержания */
+    #hold-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 6px;
+      background: #bb3300;
+      width: 0%;
+      border-radius: 0 0 10px 10px;
+      transition: width 0.1s linear;
+      pointer-events: none;
     }
-    button:hover {
-      background-color: #cc4411;
+    /* Искры */
+    .spark {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: radial-gradient(circle, #ffbb33 60%, transparent 100%);
+      border-radius: 50%;
+      opacity: 0;
+      animation: sparkUp 1.2s linear forwards;
+      pointer-events: none;
+      filter: drop-shadow(0 0 3px #ffbb33);
+    }
+    @keyframes sparkUp {
+      0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-40px) scale(0);
+        opacity: 0;
+      }
     }
     #status {
-      margin-top: 20px;
       font-size: 18px;
+      margin-top: 20px;
+      height: 24px;
     }
   </style>
 </head>
 <body>
   <h1>Костёр тьмы</h1>
-  <div id="fire">🔥</div>
-  <button id="igniteBtn">Зажечь костёр</button>
+  <div id="fire-container" aria-label="Костёр" role="button" tabindex="0">
+    <div id="fire">🔥</div>
+    <div id="hold-progress"></div>
+  </div>
   <p id="status">Костёр не горит</p>
 
   <script>
+    const fireContainer = document.getElementById('fire-container');
     const fireEl = document.getElementById('fire');
-    const igniteBtn = document.getElementById('igniteBtn');
+    const progressBar = document.getElementById('hold-progress');
     const statusEl = document.getElementById('status');
 
     let burning = false;
-    let burnTimeout;
+    let holdTimer;
+    const holdDuration = 3000; // 3 секунды удержания
+    let holdStartTime = null;
+    let progressInterval;
 
-    igniteBtn.onclick = () => {
+    // Искры
+    let sparksInterval;
+    const sparksCount = 6;
+
+    function createSpark() {
+      const spark = document.createElement('div');
+      spark.className = 'spark';
+      // Рандомное позиционирование около костра
+      const x = (Math.random() - 0.5) * 80; // +-40px от центра
+      const y = (Math.random() - 0.5) * 30; // +-15px
+      spark.style.left = `calc(50% + ${x}px)`;
+      spark.style.top = `calc(50% + ${y}px)`;
+      spark.style.animationDuration = (0.8 + Math.random() * 0.8) + 's';
+      fireContainer.appendChild(spark);
+
+      // Удаляем спарк после анимации
+      spark.addEventListener('animationend', () => {
+        spark.remove();
+      });
+    }
+
+    function startSparksEffect() {
+      if (sparksInterval) return;
+      sparksInterval = setInterval(() => {
+        for(let i=0; i<sparksCount; i++) {
+          createSpark();
+        }
+      }, 400);
+    }
+
+    function stopSparksEffect() {
+      clearInterval(sparksInterval);
+      sparksInterval = null;
+      // Удалить оставшиеся искры
+      document.querySelectorAll('.spark').forEach(s => s.remove());
+    }
+
+    function updateProgress() {
+      if (!holdStartTime) return;
+      const elapsed = Date.now() - holdStartTime;
+      const percent = Math.min((elapsed / holdDuration) * 100, 100);
+      progressBar.style.width = percent + '%';
+    }
+
+    function startHold() {
       if (burning) return;
 
+      holdStartTime = Date.now();
+      progressBar.style.width = '0%';
+      progressInterval = setInterval(updateProgress, 50);
+      startSparksEffect();
+
+      // Вибрация 100 мс при начале удержания
+      if (navigator.vibrate) {
+        navigator.vibrate(100);
+      }
+
+      holdTimer = setTimeout(() => {
+        lightFire();
+        clearInterval(progressInterval);
+        progressBar.style.width = '0%';
+        holdStartTime = null;
+        stopSparksEffect();
+      }, holdDuration);
+    }
+
+    function cancelHold() {
+      clearTimeout(holdTimer);
+      clearInterval(progressInterval);
+      progressBar.style.width = '0%';
+      holdStartTime = null;
+      stopSparksEffect();
+    }
+
+    function lightFire() {
       burning = true;
       statusEl.textContent = 'Костёр горит 8 часов 🔥';
-      igniteBtn.disabled = true;
+      fireEl.style.color = '#ff6600';
+      fireEl.style.textShadow = '0 0 15px #ff6600, 0 0 30px #ff4400';
 
-      // Через 8 часов (28800000 мс) костёр потухнет
-      burnTimeout = setTimeout(() => {
+      // Через 8 часов костёр тухнет (для теста можно меньше)
+      setTimeout(() => {
         burning = false;
         statusEl.textContent = 'Костёр потух. Зажги снова.';
-        igniteBtn.disabled = false;
+        fireEl.style.color = '';
+        fireEl.style.textShadow = '';
       }, 28800000);
-    };
+    }
+
+    // Обработчики удержания (мышь и касание)
+    fireContainer.addEventListener('mousedown', startHold);
+    fireContainer.addEventListener('touchstart', startHold);
+
+    fireContainer.addEventListener('mouseup', cancelHold);
+    fireContainer.addEventListener('mouseleave', cancelHold);
+    fireContainer.addEventListener('touchend', cancelHold);
+    fireContainer.addEventListener('touchcancel', cancelHold);
+
   </script>
 </body>
 </html>
