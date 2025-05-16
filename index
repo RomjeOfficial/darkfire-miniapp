@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Костёр тьмы — Мини-игра</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #eee;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    #fire {
+      font-size: 100px;
+      margin: 40px 0;
+      user-select: none;
+      animation: flicker 1.5s infinite alternate;
+    }
+    @keyframes flicker {
+      0% { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 22px;
+      background-color: #bb3300;
+      border: none;
+      border-radius: 12px;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    button:hover {
+      background-color: #cc4411;
+    }
+    #status {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Костёр тьмы</h1>
+  <div id="fire">🔥</div>
+  <button id="igniteBtn">Зажечь костёр</button>
+  <p id="status">Костёр не горит</p>
+
+  <script>
+    const fireEl = document.getElementById('fire');
+    const igniteBtn = document.getElementById('igniteBtn');
+    const statusEl = document.getElementById('status');
+
+    let burning = false;
+    let burnTimeout;
+
+    igniteBtn.onclick = () => {
+      if (burning) return;
+
+      burning = true;
+      statusEl.textContent = 'Костёр горит 8 часов 🔥';
+      igniteBtn.disabled = true;
+
+      // Через 8 часов (28800000 мс) костёр потухнет
+      burnTimeout = setTimeout(() => {
+        burning = false;
+        statusEl.textContent = 'Костёр потух. Зажги снова.';
+        igniteBtn.disabled = false;
+      }, 28800000);
+    };
+  </script>
+</body>
+</html>
